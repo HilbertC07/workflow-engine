@@ -12,6 +12,7 @@ import com.jiatai.workflow.domain.entity.WfTask;
 import com.jiatai.workflow.domain.entity.WfTaskRecord;
 import com.jiatai.workflow.domain.enums.NodeType;
 import com.jiatai.workflow.domain.enums.RecordAction;
+import com.jiatai.workflow.domain.enums.TaskStatus;
 import com.jiatai.workflow.domain.model.FlowGraph;
 import com.jiatai.workflow.dto.InstanceStartRequest;
 import com.jiatai.workflow.dto.InstanceVO;
@@ -24,6 +25,7 @@ import com.jiatai.workflow.mapper.WfTaskMapper;
 import com.jiatai.workflow.mapper.WfTaskRecordMapper;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -114,10 +116,29 @@ public class InstanceService {
         return toVO(inst);
     }
 
+    /**
+     * 我发起的实例列表，按 startTime 倒序；status 为空返回全部，非法值静默忽略（当没传）。
+     */
+    public List<InstanceVO> listMy(Long initiatorId, String status) {
+        LambdaQueryWrapper<WfProcessInstance> wrapper = new LambdaQueryWrapper<WfProcessInstance>()
+                .eq(WfProcessInstance::getInitiatorId, initiatorId)
+                .orderByDesc(WfProcessInstance::getStartTime);
+        if (StringUtils.hasText(status)) {
+            try {
+                wrapper.eq(WfProcessInstance::getStatus, InstanceStatus.valueOf(status));
+            } catch (IllegalArgumentException ignored) {
+                // 非法 status 静默忽略，按未传处理
+            }
+        }
+        return instanceMapper.selectList(wrapper).stream()
+                .map(i -> toVO(i, true))
+                .collect(Collectors.toList());
+    }
+
     public InstanceVO getById(Long id) {
         WfProcessInstance inst = instanceMapper.selectById(id);
         if (inst == null) throw new BizException("WF_INSTANCE_NOT_FOUND", "实例不存在");
-        return toVO(inst);
+        return toVO(inst, true);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -135,6 +156,14 @@ public class InstanceService {
     }
 
     private InstanceVO toVO(WfProcessInstance i) {
+        return toVO(i, false);
+    }
+
+    /**
+     * withCanWithdraw=true 时计算撤回按钮态（仅前端提示用，权威校验在 ProcessEngine.cancelInstance）：
+     * RUNNING 且不存在任何已处理的审批任务（抄送任务天生 COMPLETED，不参与判断）。
+     */
+    private InstanceVO toVO(WfProcessInstance i, boolean withCanWithdraw) {
         InstanceVO vo = new InstanceVO();
         vo.setInstanceId(i.getId());
         vo.setDefId(i.getDefId());
@@ -147,6 +176,17 @@ public class InstanceService {
         vo.setStatus(i.getStatus().name());
         vo.setStartTime(i.getStartTime() != null ? i.getStartTime().format(FMT) : null);
         vo.setEndTime(i.getEndTime() != null ? i.getEndTime().format(FMT) : null);
+        if (withCanWithdraw) {
+            if (i.getStatus() == InstanceStatus.RUNNING) {
+                long handled = taskMapper.selectCount(new LambdaQueryWrapper<WfTask>()
+                        .eq(WfTask::getInstanceId, i.getId())
+                        .eq(WfTask::getNodeType, NodeType.APPROVAL)
+                        .ne(WfTask::getStatus, TaskStatus.PENDING));
+                vo.setCanWithdraw(handled == 0);
+            } else {
+                vo.setCanWithdraw(false);
+            }
+        }
         return vo;
     }
 

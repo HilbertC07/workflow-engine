@@ -102,6 +102,24 @@ public class DefinitionService {
         return vo;
     }
 
+    /**
+     * 所有启用中的流程定义（每个 code 只取最新 version），供发起申请页下拉使用
+     */
+    public List<DefinitionVO> listEnabled() {
+        return defMapper.selectEnabledLatest().stream()
+                .map(def -> {
+                    DefinitionVO vo = new DefinitionVO();
+                    vo.setDefinitionId(def.getId());
+                    vo.setCode(def.getCode());
+                    vo.setName(def.getName());
+                    vo.setVersion(def.getVersion());
+                    vo.setStatus(def.getStatus().name());
+                    vo.setGraphJson(def.getGraphJson());
+                    return vo;
+                })
+                .collect(java.util.stream.Collectors.toList());
+    }
+
     public DefinitionVO latestEnabled(String code) {
         List<WfProcessDefinition> list = defMapper.selectList(new LambdaQueryWrapper<WfProcessDefinition>()
                 .eq(WfProcessDefinition::getCode, code)

@@ -25,6 +25,11 @@ public class TaskController {
         return R.ok(taskService.listTodo(assigneeId));
     }
 
+    @GetMapping("/done")
+    public R<List<TaskVO>> done(@RequestParam Long assigneeId) {
+        return R.ok(taskService.listDone(assigneeId));
+    }
+
     @PostMapping("/{id}/approve")
     public R<InstanceVO> approve(@PathVariable Long id, @Valid @RequestBody OperatorRequest req) {
         return R.ok(taskService.approve(id, req.getOperatorId(), req.getComment()));

@@ -10,8 +10,6 @@ import com.jiatai.workflow.service.InstanceService;
 import com.jiatai.workflow.service.TaskService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
 
 import java.util.List;
 import java.util.Map;
@@ -25,9 +23,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * 3. 驳回回发起人：round+1，重新生成待办
  * 4. 抄送不阻塞：CC 节点自动完成并推进到结束
  */
-@SpringBootTest
-@ActiveProfiles("test")
-class ProcessEngineTest {
+class ProcessEngineTest extends BaseEngineTest {
 
     @Autowired private DefinitionService definitionService;
     @Autowired private InstanceService instanceService;

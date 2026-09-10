@@ -45,6 +45,19 @@ public class TaskService {
     }
 
     /**
+     * 我的已办：assigneeId 匹配且状态不是 PENDING 的任务，按 finishTime 倒序
+     * （表无 update_time 列，finish_time 即处理完成时间，所有非 PENDING 任务必有值）。
+     */
+    public List<TaskVO> listDone(Long assigneeId) {
+        List<WfTask> list = taskMapper.selectList(new LambdaQueryWrapper<WfTask>()
+                .eq(WfTask::getAssigneeId, assigneeId)
+                .ne(WfTask::getStatus, TaskStatus.PENDING)
+                .orderByDesc(WfTask::getFinishTime)
+                .orderByDesc(WfTask::getCreateTime));
+        return list.stream().map(this::toVO).collect(Collectors.toList());
+    }
+
+    /**
      * 同意。返回推进后的实例状态——调用方（M3 待办页）需要据此判断流程是否已结束，
      * 否则得再查一次实例接口。
      */

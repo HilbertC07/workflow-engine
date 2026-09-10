@@ -31,6 +31,13 @@ public class InstanceController {
         return R.ok(instanceService.getById(id));
     }
 
+    /** 我发起的实例列表，status 可选，非法值静默忽略 */
+    @GetMapping("/my")
+    public R<List<InstanceVO>> my(@RequestParam Long initiatorId,
+                                  @RequestParam(required = false) String status) {
+        return R.ok(instanceService.listMy(initiatorId, status));
+    }
+
     @PostMapping("/{id}/cancel")
     public R<InstanceVO> cancel(@PathVariable Long id, @Valid @RequestBody OperatorRequest req) {
         return R.ok(instanceService.cancel(id, req.getOperatorId()));
