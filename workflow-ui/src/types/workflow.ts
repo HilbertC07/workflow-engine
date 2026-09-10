@@ -82,3 +82,50 @@ export interface R<T> {
   msg: string
   data: T
 }
+
+/** 实例状态，与后端 InstanceStatus 枚举对齐 */
+export type InstanceStatus = 'RUNNING' | 'APPROVED' | 'REJECTED' | 'CANCELLED'
+
+export interface InstanceVO {
+  instanceId: number
+  defId: number
+  defVersion: number
+  title: string
+  businessKey?: string
+  initiatorId: number
+  currentNodeKey: string
+  currentRound: number
+  status: InstanceStatus
+  /** yyyy-MM-dd HH:mm:ss */
+  startTime?: string
+  endTime?: string
+  /** 撤回按钮态提示：RUNNING 且无任何已处理审批任务。仅前端提示用，权威校验在后端 */
+  canWithdraw?: boolean
+}
+
+export interface TaskVO {
+  taskId: number
+  instanceId: number
+  instanceTitle?: string
+  nodeKey: string
+  nodeName?: string
+  assigneeId: number
+  status: string
+  round: number
+  createTime?: string
+}
+
+export type RecordAction = 'SUBMIT' | 'APPROVE' | 'REJECT' | 'CC' | 'CANCEL' | 'FINISH'
+
+export interface TaskRecordVO {
+  id: number
+  instanceId: number
+  taskId?: number
+  nodeKey: string
+  nodeName?: string
+  operatorId: number
+  action: RecordAction
+  comment?: string
+  round: number
+  createTime: string
+}
