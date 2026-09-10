@@ -1,0 +1,202 @@
+---
+description: "审批流领域模型：术语、状态机、节点类型、表结构、流程图JSON格式。做任何功能前必读"
+alwaysApply: true
+---
+
+# 审批流领域规则（唯一真相，不得自行发明概念）
+
+## 一、核心概念与术语（代码命名与文档用词必须一致）
+
+| 中文 | 英文 / 类名 | 含义 |
+|---|---|---|
+| 流程定义 | ProcessDefinition | 一张流程图的配置模板 |
+| 流程版本 | version | 定义每次保存 version +1，已发起的实例绑定发起时的版本，不受后续改版影响 |
+| 流程实例 | ProcessInstance | 一次具体的申请单 |
+| 节点 | Node | 流程图上的一个方框 |
+| 连线 | Edge | 节点之间的箭头 |
+| 任务 | Task | 实例流转到审批节点时，给某个具体的人生成的一条待办 |
+| 会签 | MultiMode.ALL | 节点上多个人，全部同意才算通过 |
+| 或签 | MultiMode.ANY | 节点上多个人，任意一人同意就算通过 |
+| 抄送 | NodeType.CC | 通知某人看，但不需要他操作，不阻塞流程 |
+| 转办 | TRANSFER | 审批人把任务交给另一个人处理 |
+| 撤回 | CANCEL | 发起人在流程走完前主动收回申请 |
+
+## 二、状态机（严格按此实现，不得新增中间态）
+
+**流程实例 InstanceStatus**：`RUNNING` → `APPROVED` / `REJECTED` / `CANCELLED`
+- 流转到结束节点 → `APPROVED`
+- 审批人被驳回且驳回策略为终止 → `REJECTED`
+- 发起人撤回 → `CANCELLED`
+- 终态不可再变更，任何对终态实例的任务操作必须抛业务异常
+
+**任务 TaskStatus**：`PENDING` → `APPROVED` / `REJECTED` / `CANCELLED` / `TRANSFERRED` / `COMPLETED`
+- `TRANSFERRED`：被转办后原任务置此状态，同时给接收人新建一条 `PENDING` 任务
+- `COMPLETED`：**仅抄送任务使用**。抄送不是"同意"，不要用 `APPROVED` 顶替，否则"我的已办"列表里会出现一堆抄送
+- 待办查询条件固定为：`status = PENDING AND node_type = APPROVAL`
+
+**流程定义 DefinitionStatus**：`DRAFT` / `ENABLED` / `DISABLED`
+- 只有 `ENABLED` 的定义能被发起
+
+## 三、节点类型 NodeType
+
+| 类型 | 说明 | 是否生成任务 |
+|---|---|---|
+| START | 开始节点，仅一个，不产生任务 | 否 |
+| APPROVAL | 审批节点，核心 | 是 |
+| CC | 抄送节点，通知即完成，自动流转到下一节点 | 是（立即自动完成） |
+| END | 结束节点，实例置 APPROVED | 否 |
+
+**第一版只实现线性顺序流**：连线不带条件，从 START 沿连线走到 END。
+条件分支（CONDITION）第一版**不实现**，但连线表/JSON 保留 `condition` 字段并允许为 null，为后续留口子。
+
+## 四、审批人指派方式 AssigneeType
+
+| 类型 | 说明 | 配置存放位置 |
+|---|---|---|
+| USER | 指定具体用户 | `assigneeConfig.userIds: [1001, 1002]` |
+| ROLE | 指定角色，解析为角色下所有用户 | `assigneeConfig.roleCodes: ["DEPT_MANAGER"]` |
+| DEPT_LEADER | 发起人的部门主管 | 无需配置，运行时按发起人查 |
+| INITIATOR_SELF | 发起人本人（用于"提交人确认"场景） | 无需配置 |
+| INITIATOR_CHOOSE | 发起时由发起人自选 | 发起时传入 |
+
+**解析结果为空是异常**：节点解析出的审批人列表为空时，抛业务异常 `WF_APPROVER_EMPTY` 并让实例停留在当前节点，不要静默跳过。
+
+## 五、多审批人模式 MultiMode
+
+- **ALL（会签）**：全部任务 `APPROVED` 才推进到下一节点；任一 `REJECTED` 立即触发驳回策略，本节点其余 `PENDING` 任务置 `CANCELLED`。
+- **ANY（或签）**：任一 `APPROVED` 即推进，本节点其余 `PENDING` 任务置 `CANCELLED`；**任一 `REJECTED` 即刻触发驳回策略**（与会签保持一致的快速失败语义，避免"先驳回的人被后同意的人覆盖"），本节点其余 `PENDING` 任务置 `CANCELLED`。
+- 只有 1 个审批人时，两种模式行为一致。
+
+## 六、驳回策略 RejectStrategy
+
+| 策略 | 行为 |
+|---|---|
+| TO_INITIATOR | 回到第一个审批节点，重新生成任务，实例状态回到 RUNNING |
+| TO_PREVIOUS_NODE | 回到上一个审批节点（第一版先不实现，保留枚举） |
+| TERMINATE | 实例直接置 REJECTED，流程终止 |
+
+## 七、动作权限
+
+| 动作 | 谁可以做 | 前置条件 |
+|---|---|---|
+| 发起 SUBMIT | 任何人 | 定义状态为 ENABLED |
+| 同意 APPROVE | 任务的当前处理人 | 任务 PENDING |
+| 驳回 REJECT | 任务的当前处理人 | 任务 PENDING，且节点 allowReject = true |
+| 转办 TRANSFER | 任务的当前处理人 | 任务 PENDING，且节点 allowTransfer = true |
+| 撤回 CANCEL | 发起人本人 | 实例 RUNNING，且**不存在任何 `node_type = APPROVAL` 且 `status != PENDING` 的任务**。抄送任务（CC，天生就是 COMPLETED）**不参与**撤回判断 |
+
+任何不满足前置条件的操作，抛业务异常并给出明确中文提示，不要静默成功。
+
+## 八、数据库表（`src/main/resources/db/schema.sql`）
+
+所有表前缀 `wf_`，主键 `id` BIGINT 自增，均含 `create_time` `update_time`，**逻辑删除字段 `deleted` 只在 `wf_process_definition` 上加**（需配合 `@TableLogic`）。
+
+**JSON 字段的铁律**：所有存 JSON 的列（`graph_json` / `form_json` / `assignee_config`）一律用 **`LONGTEXT`**，Java 实体用 **`String`**，由 Jackson 手动序列化/反序列化。
+**不要用 MySQL 原生 `JSON` 类型**——它与 H2 不兼容，会让单元测试直接跑不起来。
+
+**时间字段的铁律**：`create_time` / `update_time` 一律由 MyBatis-Plus 的 `MetaObjectHandler` 填充，**DDL 里禁止写 `ON UPDATE CURRENT_TIMESTAMP`**（H2 不支持，会导致测试建表直接失败）。DDL 只写 `NOT NULL` 即可。
+
+1. **wf_process_definition** 流程定义：`id`、`code`、`name`、`version` int、`graph_json` LONGTEXT（完整流程图的唯一真相）、`status`、`description`、`deleted`
+   - 唯一索引是 **`(code, version)`**，**不是 `code` 单独唯一**
+   - **每次保存 = 新增一行，`version` +1；绝不 UPDATE 覆盖已有行**
+2. **wf_node_definition** 节点定义：`def_id`、`node_key`（图中节点 id）、`node_type`、`node_name`、`assignee_type`、`assignee_config`、`multi_mode`、`reject_strategy`、`allow_reject`、`allow_transfer`、`sort_order`
+   —— 此表是 graph_json 的**冗余扁平化**，供引擎执行时快速查询。保存定义时必须与 graph_json **同步写入，同一事务**。
+   —— 唯一索引 **`(def_id, node_key)`**（不能漏，否则同一节点会被重复写入）
+3. **wf_process_instance** 流程实例：`def_id`、`def_version`、`title`、`business_key`、`form_json` LONGTEXT、`initiator_id`、`current_node_key`、`current_round` int（当前第几轮，从 1 开始）、`chosen_user_ids` LONGTEXT（发起人自选的审批人，JSON 形如 `{"approve_1":[1002,1004]}`）、`status`、`start_time`、`end_time`
+4. **wf_task** 审批任务：`instance_id`、`node_key`、`node_name`、`node_type`、`assignee_id`、`status`、`action`、`comment`、`round` int（第几轮，从 1 开始）、`create_time`、`finish_time`
+   —— 唯一索引：**`(instance_id, node_key, assignee_id, round)`**（必须带 `round`，否则驳回重走会撞键）
+5. **wf_task_record** 流转流水：`instance_id`、`task_id`、`node_key`、`node_name`、`operator_id`、`action`、`comment`、`round` int、`create_time`
+   —— 只追加不修改，**不需要 `update_time`**，用于前端展示审批时间线
+   —— `action` 取值：`SUBMIT` / `APPROVE` / `REJECT` / `CC` / `CANCEL` / `FINISH`（到达结束节点时的收尾流水）
+   —— `operator_id` 取值口径：SUBMIT = 发起人；APPROVE / REJECT = 该审批人；CC = 被抄送人；CANCEL = 发起人；FINISH = 最后一位审批人，取不到时填发起人
+
+## 九、流程版本策略（已定方案，不要自行改成别的）
+
+- 保存定义 = **新增一行**，version 递增，同 code 的旧版本保留不删
+- 保存新版本时，**把同 code 下其它 `ENABLED` 版本自动置为 `DISABLED`**：一个 code 同时只允许一个启用版本
+- 发起实例时：取该 code 下 `status = ENABLED` 且 `version` 最大的那一行，实例 `def_id` 永久锁定该行
+- **推进和查询在途单时，绝对不要校验 `wf_process_definition.status`**。旧版本被停用是正常情况，推进时若校验会让在途单直接卡死。**只有「发起」这一个动作校验 ENABLED。**
+
+## 十、引擎实现硬约束（写代码时必须满足，违反即返工）
+
+1. **并发防重**：同意 / 驳回 / 撤回一律用 CAS 更新，例如
+   `UPDATE wf_task SET status='APPROVED' WHERE id=? AND status='PENDING'`，
+   影响行数为 0 = 已被处理过，抛 `WF_TASK_ALREADY_HANDLED`。**禁止先 SELECT 判断再 UPDATE**。
+2. **事务**：推进流程（生成下一节点任务 + 改实例状态 + 写流水）必须在同一事务；`BizException` 必须抛出，**禁止 catch 后吞掉**（吞异常 = 事务不回滚 = 脏数据）。
+3. **推进方法必须 `public` 且跨 Bean 调用**，禁止同类内 `this.xxx()` 自调用，否则 `@Transactional` 失效。
+4. **递归/循环推进必须加最大迭代保护**（常量 `MAX_STEPS = 100`），超出即抛异常，防止图有环时死循环。
+5. **驳回回发起人（TO_INITIATOR）**：实例 `current_round + 1`，`current_node_key` 回到第一个审批节点，用**新的 round** 重新生成 PENDING 任务。
+6. **审批人为空**：抛 `WF_APPROVER_EMPTY`，**整笔回滚（含"同意"动作本身）**，上一节点任务保持 PENDING，前端提示"该节点未找到审批人，请检查流程配置"。
+7. **图校验补充**：每个节点**入线和出线都最多一条**（START 无入线、END 无出线）。出线多条直接报错，不做"取第一条"的隐式处理。
+8. **抄送任务**状态用 `COMPLETED`，不要用 `APPROVED` 顶替。
+9. **发起人自选的审批人必须落库**：`chosenUserIds` 存进 `wf_process_instance.chosen_user_ids`（JSON，key 为 nodeKey）。
+   否则驳回回发起人、`round + 1` 重新生成任务时，`INITIATOR_CHOOSE` 节点解析不到审批人，会直接抛 `WF_APPROVER_EMPTY` 把流程卡死。
+10. **`current_node_key` 的变更必须落库**：advance 循环里前移节点后，结束前必须 UPDATE 实例的 `current_node_key`，不能只改内存对象不写库。
+11. **建表脚本必须幂等**：`schema.sql` 一律用 `CREATE TABLE IF NOT EXISTS`。否则一旦配了 `spring.sql.init.mode=always`，第二次启动就会因"表已存在"启动失败。
+12. **`ProcessEngine` 放在 `engine/` 包根下**，不要放进 `engine/executor/`（executor 子包只放节点执行器）。
+
+## 十一、流程图 JSON 格式（前端设计器产出，后端解析）
+
+```json
+{
+  "nodes": [
+    {
+      "id": "start_1",
+      "type": "START",
+      "name": "开始",
+      "props": {}
+    },
+    {
+      "id": "approve_1",
+      "type": "APPROVAL",
+      "name": "部门主管审批",
+      "props": {
+        "assigneeType": "ROLE",
+        "assigneeConfig": { "roleCodes": ["DEPT_MANAGER"] },
+        "multiMode": "ALL",
+        "allowReject": true,
+        "rejectStrategy": "TO_INITIATOR",
+        "allowTransfer": false
+      }
+    },
+    { "id": "cc_1", "type": "CC", "name": "抄送人事", "props": { "userIds": [1002] } },
+    { "id": "end_1", "type": "END", "name": "结束", "props": {} }
+  ],
+  "edges": [
+    { "source": "start_1", "target": "approve_1", "condition": null },
+    { "source": "approve_1", "target": "cc_1", "condition": null },
+    { "source": "cc_1", "target": "end_1", "condition": null }
+  ]
+}
+```
+
+**校验规则（保存定义时必须做，不通过直接报错）**：
+- 有且仅有一个 START、至少一个 END
+- 不允许孤立节点（未被任何连线连接的节点）
+- 至少包含一个 APPROVAL 节点
+- 不允许环
+- 每个节点最多一条出线、最多一条入线（第一版线性流）
+- 每个 APPROVAL 节点必须能解析出审批人（INITIATOR_CHOOSE 除外）
+
+**节点坐标 `x` / `y`（M2 已加，必须遵守）**：
+- `FlowNode` 含 `Double x` / `Double y`，供设计器回显节点位置，**原样存取，不做任何加工**
+- 坐标**不参与任何流程语义与图校验**——`GraphParser` / `GraphValidator` 必须完全忽略这两个字段
+- 节点坐标缺失（null）是合法的，引擎不得因此报错
+
+## 十二、用户与组织（第一版用 Mock，不要建复杂模型）
+
+第一版**不建用户表、部门表、角色表**。
+在 `engine` 包下提供一个 `IdentityService` 接口 + `MockIdentityServiceImpl`：
+- `listUsersByRoleCodes(List<String> roleCodes)` → 返回固定用户 id 列表
+- `getDeptLeader(Long userId)` → 返回固定用户 id
+- `listAllUsers()` → 返回 `List<ProcessUser>`（id / name / role），供设计器选人
+- `listAllRoles()` → 返回 `List<ProcessRole>`（code / name），供设计器「指定角色」下拉
+内置 5 个测试用户：`1001 张三（员工）`、`1002 李四（部门主管）`、`1003 王五（人事）`、`1004 赵六（总经理）`、`1005 钱七（员工）`。
+内置 2 个测试角色：`DEPT_MANAGER 部门主管`、`GENERAL_MANAGER 总经理`。
+后续接真实系统时只替换实现类，不动引擎代码。
+
+**已提供 HTTP 接口**：
+- `GET /api/workflow/users` → `R<List<ProcessUser>>`
+- `GET /api/workflow/roles` → `R<List<ProcessRole>>`
+
+前端选人/选角色下拉与顶部用户切换都用它们，不要前端硬编码。

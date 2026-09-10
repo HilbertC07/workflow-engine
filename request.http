@@ -1,0 +1,113 @@
+### 请假流程验收 HTTP 文件（IntelliJ / VS Code REST Client 可直接执行）
+
+# 1. 保存流程定义（李四 1002 会签审批 → 抄送王五 1003 → 结束）
+POST http://localhost:8080/api/workflow/definition/save
+Content-Type: application/json
+
+{
+  "code": "leave_test",
+  "name": "请假流程测试",
+  "graphJson": "{\"nodes\":[{\"id\":\"start_1\",\"type\":\"START\",\"name\":\"开始\",\"props\":{}},{\"id\":\"approve_1\",\"type\":\"APPROVAL\",\"name\":\"部门主管审批\",\"props\":{\"assigneeType\":\"USER\",\"assigneeConfig\":{\"userIds\":[1002]},\"multiMode\":\"ALL\",\"allowReject\":true,\"rejectStrategy\":\"TO_INITIATOR\",\"allowTransfer\":false}},{\"id\":\"cc_1\",\"type\":\"CC\",\"name\":\"抄送人事\",\"props\":{\"userIds\":[1003]}},{\"id\":\"end_1\",\"type\":\"END\",\"name\":\"结束\",\"props\":{}}],\"edges\":[{\"source\":\"start_1\",\"target\":\"approve_1\",\"condition\":null},{\"source\":\"approve_1\",\"target\":\"cc_1\",\"condition\":null},{\"source\":\"cc_1\",\"target\":\"end_1\",\"condition\":null}]}"
+}
+
+###
+
+# 2. 用张三 (1001) 发起实例
+POST http://localhost:8080/api/workflow/instance/start
+Content-Type: application/json
+
+{
+  "defCode": "leave_test",
+  "initiatorId": 1001,
+  "title": "张三请假申请"
+}
+
+###
+
+# 3. 查询李四 (1002) 的待办（应有 1 条 PENDING）
+GET http://localhost:8080/api/workflow/task/todo?assigneeId=1002
+
+###
+
+# 4. 李四同意（复制上一步返回的 taskId 填入）
+POST http://localhost:8080/api/workflow/task/{taskId}/approve
+Content-Type: application/json
+
+{
+  "operatorId": 1002,
+  "comment": "同意"
+}
+
+###
+
+# 5. 查询实例状态（应 APPROVED）
+GET http://localhost:8080/api/workflow/instance/{instanceId}
+
+###
+
+# 6. 查询流转记录（应看到 SUBMIT → APPROVE → CC → FINISH）
+GET http://localhost:8080/api/workflow/instance/{instanceId}/records
+
+###
+
+# ===== 会签两人用例 =====
+# 7. 保存两人会签定义（李四 1002 + 赵六 1004）
+POST http://localhost:8080/api/workflow/definition/save
+Content-Type: application/json
+
+{
+  "code": "leave_multi",
+  "name": "两人会签测试",
+  "graphJson": "{\"nodes\":[{\"id\":\"start_1\",\"type\":\"START\",\"name\":\"开始\",\"props\":{}},{\"id\":\"approve_1\",\"type\":\"APPROVAL\",\"name\":\"会签审批\",\"props\":{\"assigneeType\":\"USER\",\"assigneeConfig\":{\"userIds\":[1002,1004]},\"multiMode\":\"ALL\",\"allowReject\":true,\"rejectStrategy\":\"TO_INITIATOR\",\"allowTransfer\":false}},{\"id\":\"cc_1\",\"type\":\"CC\",\"name\":\"抄送人事\",\"props\":{\"userIds\":[1003]}},{\"id\":\"end_1\",\"type\":\"END\",\"name\":\"结束\",\"props\":{}}],\"edges\":[{\"source\":\"start_1\",\"target\":\"approve_1\",\"condition\":null},{\"source\":\"approve_1\",\"target\":\"cc_1\",\"condition\":null},{\"source\":\"cc_1\",\"target\":\"end_1\",\"condition\":null}]}"
+}
+
+###
+
+# 8. 发起实例
+POST http://localhost:8080/api/workflow/instance/start
+Content-Type: application/json
+
+{
+  "defCode": "leave_multi",
+  "initiatorId": 1001,
+  "title": "两人会签测试"
+}
+
+###
+
+# 9. 查李四待办
+GET http://localhost:8080/api/workflow/task/todo?assigneeId=1002
+
+###
+
+# 10. 李四同意（此时流程不应结束，赵六还有待办）
+POST http://localhost:8080/api/workflow/task/{taskId}/approve
+Content-Type: application/json
+
+{
+  "operatorId": 1002,
+  "comment": "李四同意"
+}
+
+###
+
+# 11. 查赵六待办（应有 1 条）
+GET http://localhost:8080/api/workflow/task/todo?assigneeId=1004
+
+###
+
+# 12. 赵六同意 → 流程结束
+POST http://localhost:8080/api/workflow/task/{taskId}/approve
+Content-Type: application/json
+
+{
+  "operatorId": 1004,
+  "comment": "赵六同意"
+}
+
+###
+
+# 13. 验证实例状态 = APPROVED
+GET http://localhost:8080/api/workflow/instance/{instanceId}
+
+###

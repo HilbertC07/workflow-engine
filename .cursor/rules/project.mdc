@@ -1,0 +1,89 @@
+---
+description: "审批流引擎项目总纲：技术栈、目录结构、常用命令、硬性约束。始终生效"
+alwaysApply: true
+---
+
+# 项目总纲：企业级审批流引擎
+
+## 一句话目标
+自研一个**审批流引擎**（人参与的节点流），支持可视化拖拽配置流程、发起申请、逐级审批、驳回、撤回、转办、抄送。
+**不引入 Flowable / Camunda / Activiti 等现成工作流引擎**，核心调度逻辑自己实现。
+
+## 技术栈（版本锁死，不要擅自升级或替换）
+
+后端：
+- JDK 17（本机若是 21 也可，禁止用 Java 8）
+- Spring Boot 3.3+（不低于 3.2）
+- MyBatis-Plus 3.5.x
+- MySQL 8.0
+- Maven（用项目自带的 `mvnw` / `mvnw.cmd`，不依赖全局 mvn）
+- Lombok（仅允许 `@Data` `@Slf4j` `@RequiredArgsConstructor`，禁止 `@Builder` 链式滥用）
+- 不用 Redis、不用 MQ、不用 Spring Security（第一版全部后置）
+
+前端（放在 `workflow-ui/`，与后端同仓库不同目录）：
+- Vue 3 + Vite + TypeScript
+- Element Plus（UI 组件）
+- LogicFlow（`@logicflow/core` + `@logicflow/extension`）画流程图
+- Pinia + Vue Router（第一版可先只做单页）
+- 不用其他流程图库（禁止引入 bpmn-js、X6、JointJS）
+
+## 目录结构（严格遵守，不要自创层级）
+
+```
+├── pom.xml
+├── src/main/java/com/jiatai/workflow/
+│   ├── WfApplication.java
+│   ├── controller/        # 只做参数校验和结果包装，不写业务逻辑
+│   ├── service/           # 业务编排：流程定义、实例、任务
+│   ├── engine/            # 引擎内核：流程解析、节点推进、状态机
+│   │   ├── parser/        # 流程图 JSON → 可执行节点模型
+│   │   ├── executor/      # 各节点类型的执行器
+│   │   └── context/       # 流程上下文
+│   ├── domain/
+│   │   ├── entity/        # 与表一一对应
+│   │   ├── enums/         # 所有枚举集中放这里
+│   │   └── model/         # 引擎内部使用的非持久化模型
+│   ├── mapper/            # MyBatis-Plus Mapper
+│   ├── dto/               # 入参/出参对象，禁止直接暴露 entity
+│   └── common/            # 统一返回 R<T>、全局异常、业务异常
+├── src/main/resources/
+│   ├── application.yml
+│   └── db/schema.sql      # 建表语句，每次改表必须同步更新此文件
+├── src/test/java/com/jiatai/workflow/
+└── workflow-ui/
+    ├── package.json
+    └── src/
+        ├── api/           # 后端接口封装
+        ├── views/
+        │   ├── designer/  # 流程设计器（LogicFlow）
+        │   ├── apply/     # 发起申请
+        │   └── todo/      # 待办审批
+        └── types/         # 与后端 DTO 对齐的 TS 类型
+```
+
+## 常用命令（Windows）
+
+```bat
+mvnw.cmd -q clean compile          :: 编译
+mvnw.cmd test                      :: 跑测试
+mvnw.cmd spring-boot:run           :: 启动后端（端口 8080）
+cd workflow-ui && npm run dev      :: 启动前端（端口 5173）
+```
+
+数据库连接写在 `application.yml`，本地默认：`jdbc:mysql://localhost:3306/workflow?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai`，账号密码用 `root` / `123456`，并在 `.gitignore` 里排除本地覆盖配置。
+
+## 硬性约束（违反即返工）
+
+1. **任何需求在动手写代码前，先把实现步骤列出来给我确认**，我回复"可以"之后才准改文件。
+2. 一次只做一件事。不要顺手重构无关代码，不要顺手优化没让我改的类。
+3. **禁止引入新依赖**。需要的依赖先问我。
+4. 改数据库表必须同步修改 `db/schema.sql`，并明确告诉我需要执行的 DDL。
+5. 所有接口返回统一包装 `R<T>`，不要直接返回 entity 或 Map。
+6. 状态、类型一律用**枚举**，禁止在代码里硬编码字符串（"RUNNING" 这种一律不行）。
+7. 每个 service 方法涉及多表写操作必须加 `@Transactional`。
+8. 写完代码必须告诉我**怎么验证**（跑哪个命令 / 调哪个接口 / 页面点哪里），并自己先跑一遍 `mvnw.cmd -q compile` 确认能编译。
+9. 我明确说"不要做"的事情，绝对不要因为"顺手"或"更完整"去做。
+
+## 我的背景
+我做产品与业务系统，不是全职开发。解释方案时用业务语言说清楚"这步解决了什么问题"，不要堆术语。
+关键设计给出取舍说明（比如"这里用冗余字段是为了查询方便，代价是要维护一致性"），我会自己判断。

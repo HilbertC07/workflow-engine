@@ -1,0 +1,13 @@
+/* 全局样式：原生 CSS + Element Plus 变量，主色沿用默认蓝 */
+:root {
+  --el-color-primary: #409eff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* LogicFlow 画布内文本 */
+.lf-graph text {
+  pointer-events: none;
+}

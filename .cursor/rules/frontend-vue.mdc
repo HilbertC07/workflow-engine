@@ -1,0 +1,74 @@
+---
+description: "前端 Vue3 + LogicFlow 流程设计器开发规范，适用于 workflow-ui 目录"
+globs: ["workflow-ui/**/*.ts", "workflow-ui/**/*.vue", "workflow-ui/**/*.json"]
+alwaysApply: false
+---
+
+# 前端开发规范（workflow-ui）
+
+## 页面范围（第一版只做这三个，不要加页面）
+1. `/designer` 流程设计器：左节点面板 → 中画布 → 右属性面板，保存/加载流程定义
+2. `/apply` 发起申请：选流程 → 填表单 → 提交
+3. `/todo` 待办审批：我的待办列表 → 同意/驳回/转办 → 查看审批时间线
+
+用户切换靠**顶部一个下拉框模拟登录**（内置 5 个测试用户，与后端 Mock 一致：1001 张三 / 1002 李四 / 1003 王五 / 1004 赵六 / 1005 钱七）。第一版不做登录页、不做权限系统。
+
+## LogicFlow 使用约定
+- 自定义节点用 `class XxxNode extends RectNode`（或 HtmlNode），注册到 `lf.register()`
+- **四种节点对应四个自定义节点类**：`start-node` `approval-node` `cc-node` `end-node`
+  - 颜色区分：开始=灰、审批=蓝、抄送=橙、结束=绿
+  - 节点上显示 `name`，审批节点额外显示审批模式（会签/或签）小标签
+- 连线用内置 `polyline` 或 `bezier`，**只允许从右侧锚点连出、左侧锚点连入**
+- 只注册需要的插件： `@logicflow/extension` 里的 `Control`（缩放）、`MiniMap`（小地图）、`Snapshot`（导出图片），**不要引入 BpmnElement / Menu 之外的东西**
+- 导出/保存时统一调用 `lf.getGraphData()`，再**映射**成规则文件里定义的 JSON 格式（节点 `type` 转成大写枚举值，`props` 只放配置字段）
+- **节点的 `x` / `y` 必须一起存进 JSON**，否则加载回来节点会全部叠在原点。加载时把 `x`/`y` 反向映射回 LogicFlow 的 `x`/`y`
+- 加载时反向映射：后端 JSON → `lf.render({nodes, edges})`
+
+## 画布校验（前端只做快速反馈，权威校验在后端）
+- 前端只检查最表层的错误：无 START / 无 END / 有孤立节点 / 无审批节点 → `ElMessage.error` 提示并阻止保存
+- **不要**在前端实现"环检测""审批人是否可解析"这类规则——后端 `GraphParser` 已经做了，重复实现必然不一致
+- 保存接口返回非 0 时，直接把后端 `msg` 用 `ElMessage.error` 显示出来
+
+## 属性面板字段（审批节点）
+审批人类型（指定用户 / 指定角色 / 部门主管 / 发起人自选）、审批模式（会签 / 或签）、允许驳回、驳回策略、允许转办。
+其他节点不显示这些字段。改完属性要实时同步到画布节点文案。
+
+## 后端已提供的接口（不要重复造，也不要改后端）
+| 方法 | 路径 | 用途 |
+|---|---|---|
+| POST | `/api/workflow/definition/save` | 保存流程图（入参 `code`/`name`/`graphJson`，`graphJson` 是 **JSON 字符串**不是对象） |
+| GET | `/api/workflow/definition/{code}/latest-enabled` | 加载最新启用版本，用于回显 |
+| GET | `/api/workflow/users` | 5 个 Mock 用户，**审批人下拉与顶部用户切换都用它，不要前端硬编码** |
+| GET | `/api/workflow/roles` | 角色列表 `[{code, name}]`，**「指定角色」下拉用它**，`code` 取值 `DEPT_MANAGER` / `GENERAL_MANAGER` |
+
+| POST | `/api/workflow/instance/start` | 发起实例（入参 `defCode`/`initiatorId`/`title`） |
+| GET | `/api/workflow/task/todo?assigneeId=` | 我的待办，只回 PENDING 的审批任务 |
+| POST | `/api/workflow/task/{id}/approve` | 同意，**返回推进后的 `InstanceVO`（含 `status`）** |
+| POST | `/api/workflow/task/{id}/reject` | 驳回，同返回 `InstanceVO` |
+| POST | `/api/workflow/instance/{id}/cancel` | 发起人撤回 |
+| GET | `/api/workflow/instance/{id}/records` | 流转时间线 |
+
+### 请求地址（必须显式配置，否则所有接口 404）
+跨域已由后端 `CorsConfig` 放行 5173，**前端不配 Vite proxy**，改为在 axios 实例上显式写死：
+
+```ts
+const API_BASE_URL = 'http://localhost:8080'   // 部署换环境只改这一处
+const http = axios.create({ baseURL: API_BASE_URL, timeout: 15000 })
+```
+
+**铁律**：axios 必须带 `baseURL`。只写相对路径 `/api/...` 又没配 proxy 时，请求会打到 Vite 自己的 5173 端口，全部 404——`vue-tsc` 和 `vite build` 都不会报错，只有打开页面才会发现。
+
+## 代码约定
+- 全部用 `<script setup lang="ts">`，不用 Options API
+- 所有后端请求集中在 `src/api/`，用 axios 封装实例，统一解 `R<T>`，错误统一 `ElMessage` 提示
+- `src/types/` 下定义与后端 DTO 对齐的 TS interface，**字段名必须是后端驼峰**
+- 组件名大驼峰，文件放 `src/views/` 下按页面分目录
+- 样式用 `<style scoped>`，主色沿用 Element Plus 默认蓝，不要自定义一套配色
+- 不要引入状态管理库之外的东西；第一版 Pinia 只存"当前用户"
+
+## 禁止
+- 不要引入 Tailwind / UnoCSS / Sass（用原生 CSS + Element Plus 变量）
+- 不要做国际化 i18n
+- 不要写单元测试或 E2E（第一版不做）
+- 不要改 Vite 配置的端口（固定 5173），跨域已由后端 `CorsConfig` 解决，前端不要加 proxy
+- 不要引入 LogicFlow 的 `@logicflow/extension` 以外的画布库

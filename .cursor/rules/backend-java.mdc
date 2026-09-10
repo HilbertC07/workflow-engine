@@ -1,0 +1,62 @@
+---
+description: "后端 Java / Spring Boot 编码规范，适用于所有 .java 文件"
+globs: ["**/*.java", "**/pom.xml", "**/src/main/resources/**"]
+alwaysApply: false
+---
+
+# 后端编码规范
+
+## 分层职责（越界即返工）
+- `controller`：只做参数校验 + 调 service + 包装返回。**不准写业务逻辑，不准注入 Mapper**
+- `service`：业务编排、事务边界、权限校验
+- `engine`：纯流程语义（解析、推进、状态流转），**不准依赖 controller/dto 层，不准感知 HTTP**
+- `mapper`：只做单表 CRUD 与简单关联，复杂查询走 `QueryWrapper`，不写 XML（第一版全注解）
+- `entity` 不准返回给前端，必须转 `dto`
+
+## 命名
+- 类：实体 `WfTask`、DTO `TaskVO` / `ApproveRequest`、Service 接口 `TaskService` + 实现 `TaskServiceImpl`
+- 方法：查询 `getXxx` / `listXxx` / `pageXxx`，写操作 `submit` `approve` `reject` `cancel`
+- 布尔字段用 `isXxx` / `allowXxx`，数据库字段用下划线 `allow_reject`
+
+## 异常处理
+- 自定义 `BizException(String code, String message)`，业务分支不满足时直接 `throw new BizException("WF_TASK_NOT_PENDING", "该任务已处理，无法重复提交")`
+- `code` 统一前缀 `WF_`，全大写下划线
+- 全局 `@RestControllerAdvice` 捕获 `BizException` 与未知异常，未知异常只返回"系统繁忙"，详细堆栈打日志
+- 禁止在 service 里 `try-catch` 后返回错误码对象再让 controller 判断
+
+## 事务
+- 涉及 **2 张及以上表写入** 的方法必须 `@Transactional(rollbackFor = Exception.class)`
+- 事务方法内**禁止**调用外部接口、禁止长循环、禁止加 `synchronized`
+- 引擎推进流程（生成下一节点任务 + 更新实例状态 + 写流水）必须在同一个事务里
+- `BizException` 必须向外抛，**禁止 catch 后吞掉或转成返回值**——吞异常等于事务不回滚
+- 事务方法必须 `public` 且由别的 Bean 调用，禁止同类内 `this.xxx()` 自调用
+
+## 并发防重
+- 任何"状态流转"操作（同意 / 驳回 / 撤回 / 转办）必须**先 CAS 更新再判断**，不要先查后改：
+  ```java
+  int n = taskMapper.update(null,
+      new LambdaUpdateWrapper<WfTask>()
+          .eq(WfTask::getId, taskId)
+          .eq(WfTask::getStatus, TaskStatus.PENDING)
+          .set(WfTask::getStatus, TaskStatus.APPROVED));
+  if (n == 0) throw new BizException("WF_TASK_ALREADY_HANDLED", "该任务已被处理，请刷新后重试");
+  ```
+- 禁止 `先 SELECT 判断 status == PENDING，再 UPDATE` 的写法（并发下会双花）
+
+## 代码风格
+- 方法超过 40 行必须拆分；参数超过 4 个必须封装成对象
+- 禁止魔法值：所有状态码、类型、`1/0` 一律用枚举或常量
+- 判空用 `ObjectUtils.isEmpty` / `StringUtils.hasText`，不要裸 `!= null` 满天飞
+- 日志用 `@Slf4j`，关键流转点打 `log.info("实例{}流转到节点{},生成任务{}", ...)`，禁止 `System.out.println`
+- 不要写"以防万一"的空 try-catch，不要留 TODO 不说明
+
+## 测试
+- 引擎相关逻辑必须有 JUnit5 单元测试，放在 `src/test/java/com/jiatai/workflow/engine/`
+- 每个测试类名 `XxxTest`，方法名用中文语义英文命名如 `shouldMoveToNextNodeWhenAllApproved`
+- 测试用 H2 内存库或直接 Mock Mapper，不依赖本机 MySQL
+
+## 绝对禁止
+- 不要在 entity 上加业务逻辑方法
+- 不要写 `select *` 的自定义 SQL
+- 不要引入 MapStruct / Hutool / Guava（需要时先问我）
+- 不要生成 Swagger/OpenAPI 配置文件（第一版不需要）
