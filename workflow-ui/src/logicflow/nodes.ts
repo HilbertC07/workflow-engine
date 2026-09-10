@@ -29,6 +29,21 @@ export function createModel(lfType: string) {
       this.height = 56
       const name = data.properties?.name
       this.text = name ?? (typeof data.text === 'string' ? data.text : data.text?.value ?? '')
+      // 锚点常显，见下方 setHovered 注释
+      this.isShowAnchor = true
+    }
+
+    /**
+     * 锚点常显。
+     * LogicFlow 默认由 hover 态（setHovered → setIsShowAnchor）驱动锚点显隐，
+     * 连线拖拽中鼠标离开源节点会让锚点组件被 Preact 卸载重建，
+     * 重建后 Anchor 实例的 state（dragging/endX/endY）归零 →
+     * isShowLine() 恒 false（无临时连线）且 checkEnd() 因 dragging=false 直接 return，
+     * 表现为「锚点拖得动但连不出线」。这里切断 hover 对锚点显隐的控制，
+     * 配合 initNodeData 中的 isShowAnchor=true 让锚点组件在拖拽全程保持同一实例。
+     */
+    setHovered(flag: boolean) {
+      this.isHovered = flag
     }
 
     getDefaultAnchor() {
@@ -39,11 +54,17 @@ export function createModel(lfType: string) {
       ]
     }
 
+    /**
+     * 连线方向约束：只能从右侧锚点连出。
+     * 注意 LogicFlow 的 validate 签名是 (source, target, sourceAnchor, targetAnchor, edgeId)，
+     * 第 2 个参数是「目标节点」不是锚点——写成 (source, anchor) 会永远校验失败并静默拒绝连线。
+     */
     getConnectedSourceRules() {
       return super.getConnectedSourceRules().concat([
         {
           message: '只能从节点右侧锚点连线',
-          validate: (_sourceNode: unknown, sourceAnchor: any) => String(sourceAnchor.id).endsWith('_r'),
+          validate: (_source: unknown, _target: unknown, sourceAnchor: any) =>
+            String(sourceAnchor?.id ?? '').endsWith('_r'),
         },
       ])
     }
@@ -52,7 +73,12 @@ export function createModel(lfType: string) {
       return super.getConnectedTargetRules().concat([
         {
           message: '只能连入节点左侧锚点',
-          validate: (_targetNode: unknown, targetAnchor: any) => String(targetAnchor.id).endsWith('_l'),
+          validate: (
+            _target: unknown,
+            _source: unknown,
+            _sourceAnchor: unknown,
+            targetAnchor: any,
+          ) => String(targetAnchor?.id ?? '').endsWith('_l'),
         },
       ])
     }

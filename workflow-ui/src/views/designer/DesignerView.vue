@@ -33,10 +33,10 @@ onMounted(async () => {
     grid: { size: 20, visible: true, type: 'dot', config: { color: '#e0e0e0' } },
     edgeType: 'polyline',
     keyboard: { enabled: true },
+    // LogicFlow 2.x 的 use 是静态方法，插件必须通过 plugins 选项传入，
+    // 否则 lf.use(...) 抛 TypeError，onMounted 中断 → render() 不执行 → 画布空白、拖不进节点
+    plugins: [Control, MiniMap, Snapshot],
   })
-  lf.use(Control)
-  lf.use(MiniMap)
-  lf.use(Snapshot)
   registerWfNodes(lf)
   lf.render({ nodes: [], edges: [] })
 
@@ -49,6 +49,10 @@ onMounted(async () => {
       props: (data.properties?.props ?? {}) as SelectedNode['props'],
     }
   })
+  // 连线被规则拒绝时（如从左锚点连出）必须提示，否则用户只会觉得「连不上」而无任何反馈
+  lf.on('connection:not-allowed', ({ msg }: any) => {
+    ElMessage.error(msg || '不允许的连线')
+  })
   lf.on('blank:click', () => {
     selectedNode.value = null
   })
@@ -58,6 +62,11 @@ onMounted(async () => {
   })
   lf.on('history:change', syncZoomRatio)
   syncZoomRatio()
+
+  // 开发调试钩子：便于在浏览器控制台/CDP 里直接检查图数据与调用 lf API 排障
+  if (import.meta.env.DEV) {
+    ;(window as unknown as Record<string, unknown>).__wfLf = lf
+  }
 
   try {
     await userStore.loadUsers()
@@ -104,17 +113,17 @@ function clearSelection() {
 }
 
 /**
- * 缩放百分比。不同 LogicFlow 版本的 getZoom() 语义可能是「比例(1=100%)」或「百分比(100)」，
- * 这里统一归一成百分比，避免工具栏显示成 1%。
+ * 缩放百分比。LogicFlow 2.x 没有 getZoom()，只有 getTransform().SCALE_X（1 = 100%）。
  */
 function syncZoomRatio() {
   if (!lf) return
-  const z = lf.getZoom()
-  toolbar.zoomRatio = Math.round(z <= 10 ? z * 100 : z)
+  const { SCALE_X } = lf.getTransform()
+  toolbar.zoomRatio = Math.round(SCALE_X * 100)
 }
 
+/** ratio > 0 放大，否则缩小。LogicFlow 2.x 的 zoom 接受 true/false（内置刻度）或比例值 */
 function zoom(ratio: number) {
-  lf?.zoom(ratio)
+  lf?.zoom(ratio > 0)
   syncZoomRatio()
 }
 

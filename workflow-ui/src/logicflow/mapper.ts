@@ -85,7 +85,10 @@ export function toLfData(graph: FlowGraph) {
       text: n.name,
       properties: { name: n.name, props: n.props ?? {} },
     })),
+    // 边必须显式带 type：lf.render() 只认数据里的 type，
+    // 实例选项 edgeType 不参与渲染匹配，缺 type 会导致边进模型但渲染不出（表现为加载后连线消失）
     edges: graph.edges.map((e) => ({
+      type: 'polyline',
       sourceNodeId: e.source,
       targetNodeId: e.target,
     })),
