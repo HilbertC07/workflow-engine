@@ -291,14 +291,36 @@ workflow-engine/
 ```bash
 # 原机器
 git add -A && git commit -m "..." 
-git remote add origin <你的仓库地址>
+git remote add origin git@github.com:HilbertC07/workflow-engine.git
 git push -u origin master
 
 # 新机器
-git clone <你的仓库地址>
+git clone git@github.com:HilbertC07/workflow-engine.git
 cd workflow-engine
 # 然后按「三、快速开始」走
 ```
+
+> **仓库是私有的**（https://github.com/HilbertC07/workflow-engine），新机器首次使用需先配置 SSH 访问：
+>
+> ```bash
+> ssh-keygen -t ed25519 -C "your-machine"
+> cat ~/.ssh/id_ed25519.pub
+> ```
+>
+> 把输出的整行内容粘贴到 https://github.com/settings/keys → `New SSH key`（Key type 选 **Authentication Key**）。
+>
+> 远端地址统一用 `git@github.com:...` 的 **SSH** 形式。本机实测 **github.com 的 HTTPS（443）连不通**
+> （`git clone https://...` 会卡住后超时），而 SSH（22）正常。若新机器 22 端口也被封，可在 `~/.ssh/config` 切到 443 通道：
+>
+> ```
+> Host github.com
+>   HostName ssh.github.com
+>   Port 443
+>   User git
+> ```
+>
+> 已经配好 SSH 的机器直接用 `https://github.com/HilbertC07/workflow-engine.git` 也无妨，把地址里的
+> `https://github.com/` 换成 `git@github.com:` 即可。
 
 **方式 B：离线拷贝**
 
