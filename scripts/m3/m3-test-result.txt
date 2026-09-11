@@ -1,0 +1,154 @@
+===== 1. 根路径 / 跳转 =====
+  / 跳转到: /apply
+  页面文本片段: "审批流\n发起申请\n待办审批\n我的申请\n流程设计器\n当前用户\n张三（1001）\n发起申请\n流程\n选择流程定义\n标题\n业务键\n提交申请"
+
+===== 2. 随意路径 404 =====
+  URL: /this-path-does-not-exist
+  文本: "404\n\n页面不存在\n\n返回发起申请"
+
+===== 3. 发起申请页 /apply =====
+  path: /apply
+  按钮: [ '提交申请' ]
+  正文: "审批流\n发起申请\n待办审批\n我的申请\n流程设计器\n当前用户\n张三（1001）\n发起申请\n流程\n选择流程定义\n标题\n业务键\n提交申请"
+
+===== 4. 待办页 /todo =====
+  path: /todo
+  Tabs: [ '待办', '已办' ]
+  行数: 0
+  正文: "审批流\n发起申请\n待办审批\n我的申请\n流程设计器\n当前用户\n张三（1001）\n待办审批 —— 当前用户：张三\n待办\n已办\n标题\n\t\n当前节点\n\t\n提交时间\n\t\n操作\nNo Data"
+
+===== 5. 我的申请页 /my =====
+  path: /my
+  行数: 20
+  状态Tag: [{"t":"进行中","c":"--primary --light"},{"t":"已通过","c":"--success --light"},{"t":"已通过","c":"--success --light"},{"t":"进行中","c":"--primary --light"},{"t":"已撤回","c":"--info --light"},{"t":"已撤回","c":"--info --light"},{"t":"已通过","c":"--success --light"},{"t":"进行中","c":"--primary --light"},{"t":"已通过","c":"--success --light"},{"t":"已通过","c":"--success --light"},{"t":"已通过","c":"--success --light"},{"t":"进行中","c":"--primary --light"},{"t":"已撤回","c":"--info --light"},{"t":"已通过","c":"--success --light"},{"t":"已撤回","c":"--info --light"},{"t":"已通过","c":"--success --light"},{"t":"进行中","c":"--primary --light"},{"t":"已通过","c":"--success --light"},{"t":"已撤回","c":"--info --light"},{"t":"已撤回","c":"--info --light"}]
+  正文: "审批流\n发起申请\n待办审批\n我的申请\n流程设计器\n当前用户\n张三（1001）\n我的申请 —— 当前用户：张三\n标题\n\t\n当前节点\n\t\n状态\n\t\n发起时间\n\t\n操作\ncanWithdraw验证单\n\t\nap_b2\n\t\n进行中\n\t\n2026-09-10 14:23:50\n\t\n详情\n撤回\n\n\n张三请假\n\t\nend_d4\n\t\n已通过\n\t\n2026-09-10 11:47:15\n\t\n详情\n撤回\n\n\n张三请假\n\t\nend_1\n\t\n已通过\n\t\n2026-09-10 10:36:26\n\t\n详情\n撤回\n\n\n会签测试\n\t\nap_1\n\t\n进行中\n\t\n2026-09-10 10:36:26\n\t\n详情\n撤回\n\n\n正常撤回测试\n\t\nap_1\n\t\n已撤回\n\t\n2026-09-10 10:36:26\n\t\n详情\n撤回\n\n\n正常撤回测试\n\t\nap_1\n\t\n已撤回\n\t\n2026-09-10 10:34:12\n\t\n详情\n撤回\n\n\n张三请假\n\t\nend_1\n\t\n已通过\n\t\n2026-09-10 10:34:11\n\t\n详情\n撤回\n\n\n会签测试\n\t\nap_1\n\t\n进行中\n\t\n2026-09-10 10:34:11\n\t\n详情\n撤回\n\n\n张三请假\n\t\nend_d4\n\t\n已通过\n\t\n2026-09-10 10:34:00\n\t\n详情\n撤回\n\n\n张三请假\n\t\nend_d4\n\t\n已通过\n\t\n2026-09-10 10:25:42\n\t\n详情\n撤回\n\n\n张三请假\n\t\nend_d4\n\t\n已通过\n\t\n2026-09-10 10:24:34\n\t\n详情\n撤回\n\n\n会签测试\n\t\nap_1\n\t\n进行中\n\t\n2026-09-09 18:40:45\n\t\n详情\n撤回\n\n\n正常撤回测试\n\t\nap_1\n\t\n已撤回\n\t\n2026-09-09 18:40:45\n\t\n详情\n撤回\n\n\n张三请假\n\t\nend_1\n\t\n已通过\n\t\n2026-09-09 18:40:44\n"
+
+===== 6. 切用户（下拉）=====
+  用户切换候选元素: [{"cls":"user-area","txt":"当前用户张三（1001）"}]
+
+===== 7. 切到李四(1002) 后 /todo 数据联动 =====
+  下拉项: []
+
+===== 8. 异常 =====
+  (无)
+
+===== 9. 关键结果 JSON =====
+{
+  "rootRedirect": "/apply",
+  "applyNavCount": 4,
+  "applyBodyText": "审批流\n发起申请\n待办审批\n我的申请\n流程设计器\n当前用户\n张三（1001）\n发起申请\n流程\n选择流程定义\n标题\n业务键\n提交申请",
+  "notFoundUrl": "/this-path-does-not-exist",
+  "notFoundText": "404\n\n页面不存在\n\n返回发起申请",
+  "apply": {
+    "path": "/apply",
+    "text": "审批流\n发起申请\n待办审批\n我的申请\n流程设计器\n当前用户\n张三（1001）\n发起申请\n流程\n选择流程定义\n标题\n业务键\n提交申请",
+    "selects": 2,
+    "inputs": 4,
+    "buttons": [
+      "提交申请"
+    ]
+  },
+  "todo": {
+    "path": "/todo",
+    "tabs": [
+      "待办",
+      "已办"
+    ],
+    "text": "审批流\n发起申请\n待办审批\n我的申请\n流程设计器\n当前用户\n张三（1001）\n待办审批 —— 当前用户：张三\n待办\n已办\n标题\n\t\n当前节点\n\t\n提交时间\n\t\n操作\nNo Data",
+    "rows": 0
+  },
+  "my": {
+    "path": "/my",
+    "text": "审批流\n发起申请\n待办审批\n我的申请\n流程设计器\n当前用户\n张三（1001）\n我的申请 —— 当前用户：张三\n标题\n\t\n当前节点\n\t\n状态\n\t\n发起时间\n\t\n操作\ncanWithdraw验证单\n\t\nap_b2\n\t\n进行中\n\t\n2026-09-10 14:23:50\n\t\n详情\n撤回\n\n\n张三请假\n\t\nend_d4\n\t\n已通过\n\t\n2026-09-10 11:47:15\n\t\n详情\n撤回\n\n\n张三请假\n\t\nend_1\n\t\n已通过\n\t\n2026-09-10 10:36:26\n\t\n详情\n撤回\n\n\n会签测试\n\t\nap_1\n\t\n进行中\n\t\n2026-09-10 10:36:26\n\t\n详情\n撤回\n\n\n正常撤回测试\n\t\nap_1\n\t\n已撤回\n\t\n2026-09-10 10:36:26\n\t\n详情\n撤回\n\n\n正常撤回测试\n\t\nap_1\n\t\n已撤回\n\t\n2026-09-10 10:34:12\n\t\n详情\n撤回\n\n\n张三请假\n\t\nend_1\n\t\n已通过\n\t\n2026-09-10 10:34:11\n\t\n详情\n撤回\n\n\n会签测试\n\t\nap_1\n\t\n进行中\n\t\n2026-09-10 10:34:11\n\t\n详情\n撤回\n\n\n张三请假\n\t\nend_d4\n\t\n已通过\n\t\n2026-09-10 10:34:00\n\t\n详情\n撤回\n\n\n张三请假\n\t\nend_d4\n\t\n已通过\n\t\n2026-09-10 10:25:42\n\t\n详情\n撤回\n\n\n张三请假\n\t\nend_d4\n\t\n已通过\n\t\n2026-09-10 10:24:34\n\t\n详情\n撤回\n\n\n会签测试\n\t\nap_1\n\t\n进行中\n\t\n2026-09-09 18:40:45\n\t\n详情\n撤回\n\n\n正常撤回测试\n\t\nap_1\n\t\n已撤回\n\t\n2026-09-09 18:40:45\n\t\n详情\n撤回\n\n\n张三请假\n\t\nend_1\n\t\n已通过\n\t\n2026-09-09 18:40:44\n",
+    "rows": 20,
+    "tags": [
+      {
+        "t": "进行中",
+        "c": "--primary --light"
+      },
+      {
+        "t": "已通过",
+        "c": "--success --light"
+      },
+      {
+        "t": "已通过",
+        "c": "--success --light"
+      },
+      {
+        "t": "进行中",
+        "c": "--primary --light"
+      },
+      {
+        "t": "已撤回",
+        "c": "--info --light"
+      },
+      {
+        "t": "已撤回",
+        "c": "--info --light"
+      },
+      {
+        "t": "已通过",
+        "c": "--success --light"
+      },
+      {
+        "t": "进行中",
+        "c": "--primary --light"
+      },
+      {
+        "t": "已通过",
+        "c": "--success --light"
+      },
+      {
+        "t": "已通过",
+        "c": "--success --light"
+      },
+      {
+        "t": "已通过",
+        "c": "--success --light"
+      },
+      {
+        "t": "进行中",
+        "c": "--primary --light"
+      },
+      {
+        "t": "已撤回",
+        "c": "--info --light"
+      },
+      {
+        "t": "已通过",
+        "c": "--success --light"
+      },
+      {
+        "t": "已撤回",
+        "c": "--info --light"
+      },
+      {
+        "t": "已通过",
+        "c": "--success --light"
+      },
+      {
+        "t": "进行中",
+        "c": "--primary --light"
+      },
+      {
+        "t": "已通过",
+        "c": "--success --light"
+      },
+      {
+        "t": "已撤回",
+        "c": "--info --light"
+      },
+      {
+        "t": "已撤回",
+        "c": "--info --light"
+      }
+    ]
+  },
+  "userSwitcher": [
+    {
+      "cls": "user-area",
+      "txt": "当前用户张三（1001）"
+    }
+  ],
+  "dropdownItems": []
+}

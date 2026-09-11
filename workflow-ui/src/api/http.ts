@@ -9,10 +9,13 @@ import type { R } from '@/types/workflow'
 /**
  * 后端地址。
  * 前端是独立 Vite 工程（5173），后端 Spring Boot（8080），两边不同源。
- * 后端已通过 config/CorsConfig 放行 http://localhost:5173，所以这里直连绝对地址。
- * 部署到别的环境时只改这一处即可。
+ * 后端通过 config/CorsConfig 放行白名单里的前端地址，所以这里直连绝对地址。
+ *
+ * 换机器/换后端地址时：在 workflow-ui/ 下建 .env.local 写
+ *   VITE_API_BASE_URL=http://<后端IP>:<端口>
+ * 不建则用下面的默认值。参考同目录 .env.example。
  */
-const API_BASE_URL = 'http://localhost:8080'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080'
 
 const http = axios.create({
   baseURL: API_BASE_URL,

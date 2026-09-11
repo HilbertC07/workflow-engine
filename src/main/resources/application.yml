@@ -1,8 +1,16 @@
+# 后端监听端口。换机器端口冲突时设 WF_SERVER_PORT，
+# 同时要把前端的 VITE_API_BASE_URL 与后端 WF_CORS_ORIGINS 一起改。
+server:
+  port: ${WF_SERVER_PORT:8080}
+
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/workflow?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
-    username: root
-    password: 123456
+    # 换机器只需设环境变量，无需改代码：
+    #   WF_DB_URL / WF_DB_USER / WF_DB_PASSWORD
+    # 不设则用下面这套本机默认值（本机可直接启动，零配置）
+    url: ${WF_DB_URL:jdbc:mysql://localhost:3306/workflow?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}
+    username: ${WF_DB_USER:root}
+    password: ${WF_DB_PASSWORD:123456}
     driver-class-name: com.mysql.cj.jdbc.Driver
   sql:
     init:
@@ -21,3 +29,8 @@ mybatis-plus:
       logic-delete-field: deleted
       logic-delete-value: 1
       logic-not-delete-value: 0
+
+workflow:
+  cors:
+    # 前端开发服务器地址白名单（逗号分隔）。换机器端口不同时设 WF_CORS_ORIGINS
+    allowed-origins: ${WF_CORS_ORIGINS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174}
