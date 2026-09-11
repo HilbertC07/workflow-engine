@@ -1,21 +1,30 @@
-MIT License
+Copyright (c) 2026 HilbertC07. All rights reserved.
+版权所有，保留一切权利。
 
-Copyright (c) 2026 HilbertC07
+本仓库（workflow-engine）及其全部内容，包括但不限于源代码、文档、设计稿、
+流程图、注释与提交记录，其著作权归作者所有。
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+本仓库以「公开展示」为目的发布，仅供在线浏览、阅读与技术交流。任何人都可以
+访问本仓库页面查看其内容，但查看行为本身不授予任何其他权利。
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+未经作者事先书面许可，任何人不得实施下列行为：
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+  1. 复制、转载、镜像、打包或以其他方式再分发本仓库的全部或部分内容；
+  2. 修改、翻译、演绎本仓库内容，或基于其创作衍生作品；
+  3. 将本仓库内容用于任何商业用途，包括但不限于销售、许可、出租、
+     作为服务托管，或集成进商业产品或商业项目；
+  4. 移除或修改本仓库中的版权声明与署名信息。
+
+如需在上述范围之外使用，请先联系作者取得授权。
+
+免责声明：本仓库内容按「现状」提供，不附带任何明示或默示的担保，包括但不限于
+对适销性、特定用途适用性及不侵权的担保。因使用或无法使用本仓库内容而产生的
+任何直接或间接损失，作者不承担责任。
+
+---
+
+Copyright (c) 2026 HilbertC07. All rights reserved.
+
+This repository is published for viewing and reference only. No license, express or
+implied, is granted to use, copy, modify, distribute, sublicense, or commercially
+exploit any part of its contents without the prior written permission of the author.

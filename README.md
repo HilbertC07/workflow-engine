@@ -300,8 +300,10 @@ git add -A && git commit -m "..."
 git remote add origin git@github.com:HilbertC07/workflow-engine.git
 git push -u origin master
 
-# 新机器
-git clone git@github.com:HilbertC07/workflow-engine.git
+# 新机器（公开仓库，直接 https 克隆，无需账号与认证）
+git clone https://github.com/HilbertC07/workflow-engine.git
+# 若所在网络阻断 HTTPS 443，改用 SSH 地址：
+#   git clone git@github.com:HilbertC07/workflow-engine.git
 cd workflow-engine
 # 然后按「三、快速开始」走
 ```
@@ -345,3 +347,19 @@ cd workflow-engine
 
 > 注意：`node_modules` 与 `target` 里可能含有**平台相关的二进制**（如 esbuild、rollup 的原生模块），
 > 跨操作系统直接拷贝大概率跑不起来，必须在新机器重新安装/构建。
+
+---
+
+## 十一、版权与使用范围
+
+**版权所有，保留一切权利（All Rights Reserved）** —— 详见 [LICENSE](LICENSE)。
+
+本仓库以**公开展示**为目的发布，欢迎在线浏览、阅读与技术交流。但「能看到」不等于「能用」，
+未经作者事先书面许可，请勿：
+
+- 复制、转载、镜像或再分发本仓库内容（含全部或部分）；
+- 修改、翻译、演绎，或基于本仓库创作衍生作品；
+- 用于任何商业用途（销售、许可、托管服务、集成进商业产品等）；
+- 移除或修改仓库中的版权声明与署名。
+
+如需在展示之外使用，请先联系作者取得授权。
