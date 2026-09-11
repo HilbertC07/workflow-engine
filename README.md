@@ -106,7 +106,7 @@ npm run dev
 
 ## 四、换机器 / 多环境配置
 
-**本机开发零配置**（代码里已内置默认值）。换机器或后端不在本机时，改环境变量即可，**不需要动代码**。
+**本机开发只需设置数据库密码**，其余配置已内置默认值。换机器或后端不在本机时，改环境变量即可，**不需要动代码**。
 
 ### 后端
 
@@ -132,6 +132,12 @@ export WF_DB_PASSWORD=你的密码
 # Windows PowerShell
 $env:WF_DB_PASSWORD = "你的密码"
 .\mvnw.cmd spring-boot:run
+```
+
+设置一次、永久生效（Windows 用户级环境变量，重开终端后有效）：
+
+```powershell
+setx WF_DB_PASSWORD "你的密码"
 ```
 
 ### 前端
@@ -300,7 +306,14 @@ cd workflow-engine
 # 然后按「三、快速开始」走
 ```
 
-> **仓库是私有的**（https://github.com/HilbertC07/workflow-engine），新机器首次使用需先配置 SSH 访问：
+> **仓库是公开的**（https://github.com/HilbertC07/workflow-engine），任何人可直接克隆，无需账号与认证：
+>
+> ```bash
+> git clone https://github.com/HilbertC07/workflow-engine.git
+> ```
+>
+> 注意：**本机（作者机器）实测 github.com 的 HTTPS（443）连不通**（`git clone https://...` 会卡住后超时），
+> 所以这台机器推拉统一用 **SSH** 地址 `git@github.com:HilbertC07/workflow-engine.git`，需先配 SSH key：
 >
 > ```bash
 > ssh-keygen -t ed25519 -C "your-machine"
@@ -308,9 +321,9 @@ cd workflow-engine
 > ```
 >
 > 把输出的整行内容粘贴到 https://github.com/settings/keys → `New SSH key`（Key type 选 **Authentication Key**）。
+> 推送需要认证、拉取公开仓库不需要，两者互不影响。
 >
-> 远端地址统一用 `git@github.com:...` 的 **SSH** 形式。本机实测 **github.com 的 HTTPS（443）连不通**
-> （`git clone https://...` 会卡住后超时），而 SSH（22）正常。若新机器 22 端口也被封，可在 `~/.ssh/config` 切到 443 通道：
+> 若某台机器 22 端口也被封，可在 `~/.ssh/config` 切到 443 通道：
 >
 > ```
 > Host github.com
@@ -318,9 +331,6 @@ cd workflow-engine
 >   Port 443
 >   User git
 > ```
->
-> 已经配好 SSH 的机器直接用 `https://github.com/HilbertC07/workflow-engine.git` 也无妨，把地址里的
-> `https://github.com/` 换成 `git@github.com:` 即可。
 
 **方式 B：离线拷贝**
 

@@ -7,10 +7,12 @@ spring:
   datasource:
     # 换机器只需设环境变量，无需改代码：
     #   WF_DB_URL / WF_DB_USER / WF_DB_PASSWORD
-    # 不设则用下面这套本机默认值（本机可直接启动，零配置）
+    # 连接串与账号有本机默认值；密码故意不留默认值，必须先设 WF_DB_PASSWORD，
+    # 以免把开发库口令带进仓库。本机开发设置一次即可（Windows）：
+    #   setx WF_DB_PASSWORD 你的密码
     url: ${WF_DB_URL:jdbc:mysql://localhost:3306/workflow?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true}
     username: ${WF_DB_USER:root}
-    password: ${WF_DB_PASSWORD:123456}
+    password: ${WF_DB_PASSWORD:changeme}
     driver-class-name: com.mysql.cj.jdbc.Driver
   sql:
     init:
